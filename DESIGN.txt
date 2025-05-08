@@ -1,0 +1,32 @@
+# How it works.
+------------------------------------------------------------------------------------------------------------------------
+
+Autoban uses 2 methods of matching spammers.
+
+1. by querying CAS on member entry or change status from left-to-member.
+2. by checking events, collected after 10 seconds since member enters chat.
+------------------------------------------------------------------------------------------------------------------------
+
+1.a Events, from new_chat_members being checked versus CAS and if check is positive user being banned.
+
+1.b Events chat_members_updated with fields new_chat_member.status = member and old_chat_member.status = left being
+    checked versus CAS and if check is positive user being banned.
+
+1.c If user was not banned due to CAS check immediately, it will be checked against CAS second time after 10 minutes.
+
+2.a Uids from message events, from new_chat_members fields stored into NewMembers collection alongside with timestamps
+    for each user id.
+
+2.b Uids from chat_members_updated with fields new_chat_member.status = member and old_chat_member.status = left are
+    stored into AppearedUsers collection alongside with timestamps for each user id
+
+2.c Every 10 seconds goroutine runAndBan rakes all events stored in NewMembers and AppearedUsers and compares them.
+    First it tosses off pairs of events with matching user ids. Then it searches in AppearedUsers events older than 10
+    seconds since current time and bans them (also puts them into SquashedMembers collection to avoid banning of banned
+    users). Then it iterates over NewMembers and cleans all events older than 15 seconds.
+
+
+# Note on chat logging.
+------------------------------------------------------------------------------------------------------------------------
+
+Since logging done in synchronous manner (to avoid too many opened descriptors) it can be bottleneck.

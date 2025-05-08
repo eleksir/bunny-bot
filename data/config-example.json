@@ -1,0 +1,8 @@
+{
+	"name": "Bunny",
+	"token": "get_it_from_botfather",
+	"loglevel": "debug",
+	"logfile": "bunny-bot.log",
+	"csign": ".",
+	"datadir": "data"
+}

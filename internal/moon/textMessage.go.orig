@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/NicoNex/echotron/v3"
-	"github.com/davecgh/go-spew/spew"
 )
 
 func textMessage(msg *echotron.Update) {
@@ -59,38 +58,6 @@ func textMessage(msg *echotron.Update) {
 		} else {
 			Log.Infof("Info about new userid %d saved to new users db", msg.Message.From.ID)
 		}
-	}
-
-	if msg.Message.Text == "cf9ccd46f56c32eca88390785e94d69b" {
-		// TODO: замьютить юзера.
-		kbr := []echotron.KeyboardButton{}
-		kbr = append(kbr, echotron.KeyboardButton{
-			Text: "Кек",
-		})
-		kbr = append(kbr, echotron.KeyboardButton{
-			Text: "Лол",
-		})
-
-		kbd := [][]echotron.KeyboardButton{}
-		kbd = append(kbd, kbr)
-		messageText := fmt.Sprintf("Дорогой [%s](tg://user?id=%d), ты нашёл скрытый ивент, лол?", msg.Message.From.Username, msg.Message.From.ID)
-
-		r, err := Tg.SendMessage(
-			messageText,
-			msg.Message.Chat.ID,
-			&echotron.MessageOptions{
-				ParseMode: echotron.Markdown,
-				ReplyMarkup: echotron.ReplyKeyboardMarkup{
-					Keyboard:        kbd,
-					OneTimeKeyboard: true,
-					Selective:       true,
-					ResizeKeyboard:  true,
-				},
-			},
-		)
-
-		Log.Info(spew.Sdump(err))
-		Log.Info(spew.Sdump(r))
 	}
 }
 

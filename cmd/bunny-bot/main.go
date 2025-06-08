@@ -13,6 +13,9 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// TODO: use https://dev.to/gholami1313/saving-log-messages-to-a-custom-log-file-in-golang-ce5 for
+//
+//	chat messages.
 func main() {
 	var err error
 

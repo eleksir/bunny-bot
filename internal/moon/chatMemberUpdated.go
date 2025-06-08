@@ -34,9 +34,9 @@ func newChatMember(msg *echotron.Update) {
 			msg.ChatMember.Chat.ID,
 		)
 
-		NewMembers[msg.Message.Chat.ID] = cache.New(1 * time.Minute)
-		AppearedMembers[msg.Message.Chat.ID] = cache.New(1 * time.Minute)
-		SquashedMembers[msg.Message.Chat.ID] = cache.New(60 * time.Minute)
+		NewMembers[msg.ChatMember.Chat.ID] = cache.New(1 * time.Minute)
+		AppearedMembers[msg.ChatMember.Chat.ID] = cache.New(1 * time.Minute)
+		SquashedMembers[msg.ChatMember.Chat.ID] = cache.New(60 * time.Minute)
 
 		Log.Debugf(
 			"Add %s %s (%d) to list of known chats",

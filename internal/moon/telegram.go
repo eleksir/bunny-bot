@@ -72,6 +72,24 @@ func telegramMsgParser(msg *echotron.Update) {
 		return
 	}
 
+	if msg.MessageReaction != nil {
+		reaction(msg)
+
+		return
+	}
+
+	if msg.MessageReactionCount != nil {
+		reactionCount(msg)
+
+		return
+	}
+
+	if msg.Message != nil && msg.Message.Photo != nil {
+		photo(msg)
+
+		return
+	}
+
 	Log.Debug(spew.Sdump(msg))
 }
 

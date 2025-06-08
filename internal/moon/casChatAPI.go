@@ -93,3 +93,5 @@ func CasCheckID(id int64) (bool, error) {
 
 	return result, fmt.Errorf("unable to parse response from api.cas.chat: %s", string(body)) //nolint: err113
 }
+
+/* vim: set ft=go noet ai ts=4 sw=4 sts=4: */

@@ -91,3 +91,5 @@ func squash(chatid int64, chattype, chattitle string, userid int64, firstname, l
 		}
 	}
 }
+
+/* vim: set ft=go noet ai ts=4 sw=4 sts=4: */

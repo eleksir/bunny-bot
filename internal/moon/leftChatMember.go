@@ -19,6 +19,8 @@ func leftChatMember(msg *echotron.Update) {
 		msg.Message.Chat.ID,
 	)
 
+	// Save people that left chat to pebbledb. To preserve their state.
+	// TODO: Remove items on chatMemberUpdated event.
 	if err := Cfg.SaveKeyValue(
 		"LeftMembers",
 		fmt.Sprintf("%d", msg.Message.Chat.ID),

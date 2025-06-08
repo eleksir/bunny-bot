@@ -1,15 +1,27 @@
 package moon
 
 import (
+	"fmt"
 	"slices"
 	"time"
 
 	"github.com/NicoNex/echotron/v3"
-	cache "github.com/akyoto/cache"
 )
 
 // newChatMembers parses NewChatMember event.
 func newChatMembers(msg *echotron.Update) {
+	// If there is no such chatid, means that no such cache too.
+	Log.Debugf(
+		"Add %s %s (%d) to list of known chats",
+		msg.Message.Chat.Type,
+		msg.Message.Chat.Title,
+		msg.Message.Chat.ID,
+	)
+
+	ChatList = append(ChatList, msg.Message.Chat.ID)
+	slices.Sort(ChatList)
+	ChatList = slices.Compact(ChatList)
+
 	for _, user := range msg.Message.NewChatMembers {
 		Log.Infof(
 			"User %s %s (username = %s, id = %d) joined %s %s (%d)",
@@ -21,29 +33,6 @@ func newChatMembers(msg *echotron.Update) {
 			msg.Message.Chat.Title,
 			msg.Message.Chat.ID,
 		)
-
-		// If there is no such chatid, means that no such cache too.
-		if !slices.Contains(ChatList, msg.Message.Chat.ID) {
-			Log.Debugf(
-				"Creating caches for new %s %s (%d)",
-				msg.Message.Chat.Type,
-				msg.Message.Chat.Title,
-				msg.Message.Chat.ID,
-			)
-
-			NewMembers[msg.Message.Chat.ID] = cache.New(1 * time.Minute)
-			AppearedMembers[msg.Message.Chat.ID] = cache.New(1 * time.Minute)
-			SquashedMembers[msg.Message.Chat.ID] = cache.New(60 * time.Minute)
-
-			Log.Debugf(
-				"Add %s %s (%d) to list of known chats",
-				msg.Message.Chat.Type,
-				msg.Message.Chat.Title,
-				msg.Message.Chat.ID,
-			)
-
-			ChatList = append(ChatList, msg.Message.Chat.ID)
-		}
 
 		casBanned, err := CasCheckID(user.ID)
 
@@ -99,7 +88,9 @@ func newChatMembers(msg *echotron.Update) {
 			msg.Message.Chat.ID,
 		)
 
-		NewMembers[msg.Message.Chat.ID].Set(user.ID, time.Now().Unix(), 1*time.Minute)
+		key := fmt.Sprintf("%d+%d", msg.Message.Chat.ID, user.ID)
+		NewMembers.Set(key, time.Now().Unix(), 1*time.Minute)
+		PendingCASMembers.Set(key, time.Now().Unix(), 30*time.Minute)
 	}
 }
 

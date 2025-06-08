@@ -41,7 +41,9 @@ func CasCheckID(id int64) (bool, error) {
 
 	// Client should not return with http status code other than 200.
 	if resp.StatusCode > 200 {
-		return result, fmt.Errorf("api.cas.chat returns non-200 http status code: %d %s", resp.StatusCode, resp.Status) //nolint: err113
+		return result, fmt.Errorf(
+			"api.cas.chat returns non-200 http status code: %d %s",
+			resp.StatusCode, resp.Status) //nolint: err113
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -65,7 +67,8 @@ func CasCheckID(id int64) (bool, error) {
 
 	// Не удалось преобразовать map-ку в json.
 	if err != nil {
-		return result, fmt.Errorf("unable to parse back to json response from api.cas.chat parsed by hjson: %w", err)
+		return result, fmt.Errorf(
+			"unable to parse back to json response from api.cas.chat parsed by hjson: %w", err)
 	}
 
 	if err := json.Unmarshal(tmpjson, &notBanned); err == nil {
@@ -93,3 +96,5 @@ func CasCheckID(id int64) (bool, error) {
 
 	return result, fmt.Errorf("unable to parse response from api.cas.chat: %s", string(body)) //nolint: err113
 }
+
+/* vim: set ft=go noet ai ts=4 sw=4 sts=4: */

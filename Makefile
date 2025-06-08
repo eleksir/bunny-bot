@@ -2,18 +2,86 @@
 
 GOOPTS=CGO_ENABLED=0
 BUILDOPTS=-ldflags="-s -w" -a -gcflags=all=-l -trimpath -buildvcs=false
+MYNAME=bunny-bot
+BINARY=${MYNAME}
+UNIX_BINARY=${MYNAME}
+WINDOWS_BINARY=${MYNAME}.exe
+RMCMD=rm -rf
+
+# На windows имя бинарника может зависеть не только от платформы, но и от выбранной цели, для linux-а суффикс .exe
+# не нужен
+ifeq ($(OS),Windows_NT)
+ifdef GOOS
+ifeq ($(GOOS),windows)
+BINARY=${WINDOWS_BINAMRY}
+else  # not ifeq ($(GOOS),windows)
+BINARY=${MYNAME}
+endif # ifeq ($(GOOS),windows)
+else  # not ifdef GOOS 
+BINARY=${WINDOWS_BINARY}
+endif # ifdef GOOS
+ifeq ($(SHELL), sh.exe)
+RMCMD=DEL /Q /F
+endif
+endif
+
+# Явно определяем символ новой строки, чтобы избежать неоднозначности на windows
+define IFS
+
+endef
+
 
 all: clean build
 
+
 build:
-	${GOOPTS} go build ${BUILDOPTS} -o bunny-bot ./cmd/bunny-bot
+ifeq ($(OS),Windows_NT)
+# Looks like on windows gnu make explicitly set SHELL to sh.exe, if it was not set.
+ifeq ($(SHELL), sh.exe)
+#       # Vanilla cmd.exe / powershell.
+	SET "CGO_ENABLED=0"
+	go build ${BUILDOPTS} -o ${BINARY} ./cmd/${MYNAME}
+else ifeq (,$(findstring(Git/usr/bin/sh.exe, $(SHELL))))
+#       # git-bash
+	CGO_ENABLED=0 go build ${BUILDOPTS} -o ${BINARY} ./cmd/${MYNAME}
+else  # not ifeq (,$(findstring(Git/usr/bin/sh.exe, $(SHELL))))
+#       # Some other shell.
+#       # TODO: handle it.
+	$(info "-- Dunno how to handle this shell: ${SHELL}")
+endif # ifeq (,$(findstring(Git/usr/bin/sh.exe, $(SHELL))))
+else  # not  ($(OS),Windows_NT)
+	CGO_ENABLED=0 go build ${BUILDOPTS} -o ${BINARY} ./cmd/${MYNAME}
+endif # ifeq ($(OS),Windows_NT)
+
 
 clean:
-	rm -rf bunny-bot
+ifeq ($(OS),Windows_NT)
+ifeq ($(SHELL),sh.exe)
+#	# Vanilla cmd.exe / powershell.
+	if exist ${WINDOWS_BINARY} ${RMCMD} ${WINDOWS_BINARY}
+	if exist ${UNIX_BINARY} ${RMCMD} ${UNIX_BINARY}
+else  # not ifeq ($(SHELL),sh.exe)
+	${RMCMD} ./${WINDOWS_BINARY}
+	${RMCMD} ./${UNIX_BINARY}
+endif # ifeq ($(SHELL),sh.exe)
+else  # not ifeq ($(OS),Windows_NT)
+	${RMCMD} ./${BINARY}
+endif
+
 
 upgrade:
-	rm -rf vendor
-	go get -u -t -tool ./...
+ifeq ($(OS),Windows_NT)
+ifeq ($(SHELL),sh.exe)
+#	# Vanilla cmd.exe / powershell.
+	if exist vendor DEL /F /S /Q vendor >nul
+else  # not ifeq ($(SHELL),sh.exe)
+#       # git-bash
+	$(RM) -r vendor
+endif # ifeq ($(SHELL),sh.exe)
+else  # not ifeq ($(OS),Windows_NT)
+	$(RM) -r vendor
+endif
+	go get -d -u ./...
 	go mod tidy
 	go mod vendor
 

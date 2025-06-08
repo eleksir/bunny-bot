@@ -1,6 +1,7 @@
 package moon
 
 import (
+	"os"
 	"time"
 )
 
@@ -10,6 +11,7 @@ type MyConfig struct {
 	Token    string `json:"token,omitempty"`
 	LogLevel string `json:"loglevel,omitempty"`
 	LogFile  string `json:"logfile,omitempty"`
+	LogChats bool   `json:"logchats,omitempty"`
 	CSign    string `json:"csign,omitempty"`
 	DataDir  string `json:"datadir,omitempty"`
 }
@@ -28,6 +30,11 @@ type CasTrue struct {
 		Offenses  int       `json:"offenses"`
 		TimeAdded time.Time `json:"time_added"`
 	} `json:"result"`
+}
+
+type Chatlog struct {
+	LogFilePath string
+	File        *os.File
 }
 
 /* vim: set ft=go noet ai ts=4 sw=4 sts=4: */

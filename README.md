@@ -2,7 +2,8 @@
 
 Yet another telegram bot. It has one purpose - restrict access of abusers to chat.
 
-By now it uses [Combot Anti-Spam System](https://cas.chat/) to detect spammers and its own method of detection of bad users.
+By now it uses [Combot Anti-Spam System](https://cas.chat/) to detect spammers and its own method of detection of bad
+users.
 
 ## Build instructions
 
@@ -14,15 +15,15 @@ make
 
 ## Run instructions
 
-You probably don't need it in its current state. But if you want - all is simple. Visit data/config.json, edit for your needs
-and run:
+You probably don't need it in its current state. But if you want - all is simple. Visit data/config.json, edit for your
+needs and run:
 
 ```bash
 ./bunny-bot
 ```
 
-There is openrc init script in contrib directory, you may use it for creating service under alpine linux or gentoo(untested) with
-openrc init.
+There is openrc init script in contrib directory, you may use it for creating service under alpine linux or
+gentoo(untested) with openrc init.
 
 That's it.
 

@@ -1,30 +1,12 @@
+version: "2"
 run:
-  tests: false
+  go: "1.24"
   modules-download-mode: readonly
+  tests: false
   allow-parallel-runners: true
-  go: '1.24'
-output:
-  sort-results: true
-linters-settings:
-  gosec:
-    excludes:
-      # Оно не используется для повышения безопасности или каких-то таких секъюрых вещей, оно используется для выборки
-      # произвольного элемента из массива, так что ИДИ НАХУЙ с этой проверкой и не еби мозги липовой безопасностью.
-      - G404 # Insecure random number source (rand)
-issues:
-  exclude-dirs:
-    - data
-    - vendor
-
 linters:
-  disable-all: true
+  default: none
   enable:
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
     - asasalint
     - asciicheck
     - bodyclose
@@ -34,6 +16,7 @@ linters:
     - decorder
     - durationcheck
     - err113
+    - errcheck
     - errchkjson
     - errorlint
     - exhaustive
@@ -41,12 +24,12 @@ linters:
     - gocheckcompilerdirectives
     - gocritic
     - godot
-    - gofmt
-    - goimports
     - gosec
     - gosmopolitan
+    - govet
     - grouper
     - importas
+    - ineffassign
     - ireturn
     - makezero
     - mirror
@@ -62,10 +45,35 @@ linters:
     - reassign
     - revive
     - rowserrcheck
-    - stylecheck
+    - staticcheck
     - unconvert
+    - unused
     - wastedassign
     - whitespace
     - wsl
-
-# vim: set ft=yaml et ai ts=2 sw=2 sts=2:
+  settings:
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - data
+      - vendor
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - data
+      - vendor
+      - third_party$
+      - builtin$
+      - examples$

@@ -13,6 +13,9 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// TODO: use https://dev.to/gholami1313/saving-log-messages-to-a-custom-log-file-in-golang-ce5 for
+//
+//	chat messages.
 func main() {
 	var err error
 
@@ -32,7 +35,7 @@ func main() {
 	}
 
 	// Config for Zap logger facility.
-	var logCfg zap.Config = zap.NewDevelopmentConfig()
+	var logCfg = zap.NewDevelopmentConfig()
 
 	// Define loglevel.
 	var l zapcore.Level
@@ -75,6 +78,10 @@ func main() {
 	moon.Log.Info("Starting RunAndBan() periodic task")
 
 	go moon.RunAndBan()
+
+	moon.Log.Info("Starting DeferredCASCheck() task")
+
+	go moon.DeferredCASCheck()
 
 	moon.Log.Info("Starting main loop")
 

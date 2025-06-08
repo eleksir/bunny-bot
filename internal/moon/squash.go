@@ -1,11 +1,11 @@
 package moon
 
 import (
+	"fmt"
 	"slices"
 	"time"
 
 	"github.com/NicoNex/echotron/v3"
-	"github.com/akyoto/cache"
 )
 
 // TODO: refactor to return bool, error
@@ -16,18 +16,13 @@ func squash(chatid int64, chattype, chattitle string, userid int64, firstname, l
 
 	// If there is no such chatid, means that no such cache too.
 	if len(ChatList) == 0 || !slices.Contains(ChatList, chatid) {
-		Log.Debugf("Creating caches for new %s %s (%d)", chattype, chattitle, chatid)
-
-		NewMembers[chatid] = cache.New(1 * time.Minute)
-		AppearedMembers[chatid] = cache.New(1 * time.Minute)
-		SquashedMembers[chatid] = cache.New(5 * time.Minute)
-
 		Log.Debugf("Add %s %s (%d) to list of known chats", chattype, chattitle, chatid)
 
 		ChatList = append(ChatList, chatid)
 	}
 
-	if found, exist := SquashedMembers[chatid].Get(userid); exist && found.(bool) {
+	key := fmt.Sprintf("%d+%d", chatid, userid)
+	if _, exist := SquashedMembers.Get(key); exist {
 		Log.Infof(
 			"Skip banning user %s %s (username = %s, id = %d) in %s %s (%d), already banned",
 			firstname,
@@ -85,9 +80,55 @@ func squash(chatid int64, chattype, chattitle string, userid int64, firstname, l
 				chatid,
 			)
 
-			SquashedMembers[chatid].Set(userid, true, 30*time.Second)
-			NewMembers[chatid].Delete(userid)
-			AppearedMembers[chatid].Delete(userid)
+			key := fmt.Sprintf("%d+%d", chatid, userid)
+			Log.Debugf(
+				"Put user %s %s (username = %s, id = %d) in %s %s (%d) into SquashedMembers to debounce ban.",
+				firstname,
+				lastname,
+				username,
+				userid,
+				chattype,
+				chattitle,
+				chatid,
+			)
+			SquashedMembers.Set(key, true, 30*time.Second)
+
+			Log.Debugf(
+				"Remove user %s %s (username = %s, id = %d) in %s %s (%d) from NewMembers.",
+				firstname,
+				lastname,
+				username,
+				userid,
+				chattype,
+				chattitle,
+				chatid,
+			)
+			NewMembers.Delete(key)
+
+			Log.Debugf(
+				"Remove user %s %s (username = %s, id = %d) in %s %s (%d) from AppearedMembers.",
+				firstname,
+				lastname,
+				username,
+				userid,
+				chattype,
+				chattitle,
+				chatid,
+			)
+			AppearedMembers.Delete(key)
+
+			if err := Cfg.SaveKeyValue(
+				"BannedMembers",
+				fmt.Sprintf("%d", chatid),
+				fmt.Sprintf("%d", userid),
+				fmt.Sprintf("%d", time.Now().Unix()),
+			); err != nil {
+				Log.Error(err)
+			} else {
+				Log.Infof("Info about banned userid %d saved to BannedMembers db", userid)
+			}
 		}
 	}
 }
+
+/* vim: set ft=go noet ai ts=4 sw=4 sts=4: */

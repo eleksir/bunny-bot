@@ -5,7 +5,7 @@ import (
 	"syscall"
 )
 
-// SigHandler хэндлер сигналов закрывает все бд, все сетевые соединения и сваливает из приложения.
+// SigHandler.handles signals. Mainly closes persistent dbs and quits for good.
 func SigHandler() {
 	for {
 		var s = <-SigChan
@@ -17,7 +17,7 @@ func SigHandler() {
 		case syscall.SIGQUIT:
 			Log.Infoln("Got SIGQUIT, quitting")
 
-		// Заходим на новую итерацию, если у нас "неинтересный" сигнал.
+		// Make new iteration since we 've got signal we not interested in.
 		default:
 			continue
 		}

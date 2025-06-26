@@ -6,6 +6,7 @@ import (
 	"github.com/NicoNex/echotron/v3"
 )
 
+// photo handles messages with photos.
 func photo(msg *echotron.Update) {
 	AddChat(&msg.Message.Chat)
 	AddUser(msg.Message.From)

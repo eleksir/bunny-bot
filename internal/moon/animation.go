@@ -6,6 +6,7 @@ import (
 	"github.com/NicoNex/echotron/v3"
 )
 
+// animation parses message with animation.
 func animation(msg *echotron.Update) {
 	if Cfg.LogChats {
 		ChatLog(

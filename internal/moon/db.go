@@ -11,7 +11,7 @@ import (
 	"github.com/cockroachdb/pebble"
 )
 
-// StoreKV сохраняет в указанной бд ключ и значение.
+// StoreKV saves given  key and value in given db.
 func StoreKV(db *pebble.DB, key string, value string) error {
 	var (
 		kArray = []byte(key)
@@ -29,7 +29,7 @@ func StoreKV(db *pebble.DB, key string, value string) error {
 	return err
 }
 
-// FetchV достаёт значение по ключу.
+// FetchV gets value by given key from given db.
 func FetchV(db *pebble.DB, key string) (string, error) {
 	var (
 		kArray = []byte(key)
@@ -50,7 +50,7 @@ func FetchV(db *pebble.DB, key string) (string, error) {
 	return valueString, err
 }
 
-// GetValue достаёт настройку из БД с настройками.
+// GetValue gets setting for chat from given db name.
 // TODO: should return string, error and should not log error internally.
 func (cfg *MyConfig) GetValue(dataBaseName string, chatID string, setting string) string {
 	var err error
@@ -58,12 +58,13 @@ func (cfg *MyConfig) GetValue(dataBaseName string, chatID string, setting string
 	chatHash := sha256.Sum256([]byte(chatID))
 	dataBaseDir := fmt.Sprintf("%s/db/%s/%x", cfg.DataDir, dataBaseName, chatHash)
 
-	// Если БД не открыта, откроем её
+	// If db descriptor is not open yet, open it.
 	if _, ok := DB[dataBaseDir]; !ok {
 		var options pebble.Options
-		// По дефолту ограничение ставится на мегабайты данных, а не на количество файлов, поэтому с дефолтными
-		// настройками порождается огромное количество файлов. Умолчальное ограничение на количество файлов - 500 штук,
-		// что нас не устраивает, поэтому немного снизим эту цифру до более приемлемых значений.
+		/*
+		 * By default limit set on megs of data, but not on amount of files thus with defaults we have tons of
+		 * files. Default limit on tomporary files is 500, lets cut it down to 8.
+		 */
 		options.L0CompactionFileThreshold = 8
 
 		if err := os.MkdirAll(dataBaseDir, os.ModePerm); err != nil {
@@ -83,7 +84,7 @@ func (cfg *MyConfig) GetValue(dataBaseName string, chatID string, setting string
 
 	value, err := FetchV(DB[dataBaseDir], setting)
 
-	// Если из базы ничего не вынулось, по каким-то причинам, то просто вернём пустую строку.
+	// If db returns nothing for some reason, just return ampty string.
 	if err != nil {
 		switch {
 		case errors.Is(err, pebble.ErrNotFound):
@@ -102,7 +103,7 @@ func (cfg *MyConfig) GetValue(dataBaseName string, chatID string, setting string
 	return value
 }
 
-// SaveSetting сохраняет настройку в БД с настройками.
+// SaveSetting saves setting name and its value to given db name.
 func (cfg *MyConfig) SaveKeyValue(dataBaseName string, chatID string, setting string, value string) error {
 	var (
 		chatHash    = sha256.Sum256([]byte(chatID))
@@ -110,12 +111,13 @@ func (cfg *MyConfig) SaveKeyValue(dataBaseName string, chatID string, setting st
 		err         error
 	)
 
-	// Если БД не открыта, откроем её.
+	// If db descriptor is not open yet, open it.
 	if _, ok := DB[dataBaseDir]; !ok {
 		var options pebble.Options
-		// По дефолту ограничение ставится на мегабайты данных, а не на количество файлов, поэтому с дефолтными
-		// настройками порождается огромное количество файлов. Умолчальное ограничение на количество файлов - 500 штук,
-		// что нас не устраивает, поэтому немного снизим эту цифру до более приемлемых значений.
+		/*
+		 * By default limit set on megs of data, but not on amount of files thus with defaults we have tons of
+		 * files. Default limit on tomporary files is 500, lets cut it down to 8.
+		 */
 		options.L0CompactionFileThreshold = 8
 
 		if err := os.MkdirAll(dataBaseDir, os.ModePerm); err != nil {

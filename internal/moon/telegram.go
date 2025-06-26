@@ -5,7 +5,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
-// Telegram основная горутинка, реализующая бота.
+// Telegram main goroutine that implements bot.
 func Telegram(cfg MyConfig) {
 	Tg = echotron.NewAPI(cfg.Token)
 

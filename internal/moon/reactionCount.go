@@ -7,6 +7,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
+// reactionCount handles reactionCount event.
 func reactionCount(msg *echotron.Update) {
 	ChatLog(
 		msg.MessageReaction.Chat.ID,

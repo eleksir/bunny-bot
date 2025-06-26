@@ -11,3 +11,4 @@ Before release we have to do next features:
 [ ] make use of sailor moon quotes :)
 [ ] implement hello phrase with 15 minute timeout. if user does not answer, ban it
 [ ] ban people with first message is video or picture/image/photo.
+[ ] replace zap with zerolog, to use only one facility in all places.

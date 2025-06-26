@@ -8,6 +8,6 @@ Before release we have to do next features:
 [ ] command to ban user
 [ ] command to unban user
 [ ] add ability to show software version
-[ ] make use of sailor moon quates :)
+[ ] make use of sailor moon quotes :)
 [ ] implement hello phrase with 15 minute timeout. if user does not answer, ban it
 [ ] ban people with first message is video or picture/image/photo.

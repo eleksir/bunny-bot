@@ -19,6 +19,7 @@
 package echotron
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -42,17 +43,8 @@ func check(r APIResponse) error {
 
 func processMedia(media, thumbnail InputFile) (im mediaEnvelope, cnt []content, err error) {
 	switch {
-	case media.id != "":
-		im = mediaEnvelope{
-			media:     media.id,
-			thumbnail: "",
-		}
-
-	case media.url != "":
-		im = mediaEnvelope{
-			media:     media.url,
-			thumbnail: "",
-		}
+	case media.ref() != "":
+		im.media = media.ref()
 
 	case media.path != "" && len(media.content) == 0:
 		if media.content, media.path, err = readFile(media); err != nil {
@@ -62,13 +54,14 @@ func processMedia(media, thumbnail InputFile) (im mediaEnvelope, cnt []content, 
 
 	case media.path != "" && len(media.content) > 0:
 		cnt = append(cnt, content{media.path, media.path, media.content})
-		im = mediaEnvelope{
-			media:     fmt.Sprintf("attach://%s", media.path),
-			thumbnail: "",
-		}
+		im.media = fmt.Sprintf("attach://%s", media.path)
 	}
 
 	switch {
+	// Needed by live photos, whose static photo is passed as the thumbnail.
+	case thumbnail.ref() != "":
+		im.thumbnail = thumbnail.ref()
+
 	case thumbnail.path != "" && len(thumbnail.content) == 0:
 		if thumbnail.content, thumbnail.path, err = readFile(thumbnail); err != nil {
 			return
@@ -126,6 +119,30 @@ func toContent(ftype string, f InputFile) (content, error) {
 	return content{f.path, ftype, f.content}, nil
 }
 
+// errNestedUpload is returned when a local file is used as media nested in another parameter.
+var errNestedUpload = errors.New("echotron: media nested in polls and rich messages must be a file ID or a URL")
+
+// inlineMedia prepares a media to be serialised inside another JSON parameter.
+// It returns nil if m is nil, so that the media can be omitted.
+// Nested media only accept file IDs and URLs, uploading local files
+// would need multipart plumbing through every parameter that embeds media.
+func inlineMedia(m InputMedia) (*mediaEnvelope, error) {
+	if m == nil {
+		return nil, nil
+	}
+
+	media, thumbnail := m.media(), m.thumbnail()
+	if (media.ref() == "" && media.path != "") || (thumbnail.ref() == "" && thumbnail.path != "") {
+		return nil, errNestedUpload
+	}
+
+	return &mediaEnvelope{
+		InputMedia: m,
+		media:      media.ref(),
+		thumbnail:  thumbnail.ref(),
+	}, nil
+}
+
 func toInputMedia(media []GroupableInputMedia) (ret []InputMedia) {
 	ret = make([]InputMedia, len(media))
 
@@ -149,6 +166,61 @@ func joinURL(base, endpoint string, vals url.Values) (addr string, err error) {
 	}
 
 	return
+}
+
+func processProfilePhoto(photo InputProfilePhoto) (env profilePhotoEnvelope, cnt []content, err error) {
+	env.content = photo
+	file := photo.profilePhotoFile()
+
+	switch {
+	case file.id != "":
+		env.ref = file.id
+
+	case file.url != "":
+		env.ref = file.url
+
+	case file.path != "" && len(file.content) == 0:
+		if file.content, file.path, err = readFile(file); err != nil {
+			return
+		}
+		fallthrough
+
+	case file.path != "" && len(file.content) > 0:
+		cnt = append(cnt, content{file.path, file.path, file.content})
+		env.ref = fmt.Sprintf("attach://%s", file.path)
+	}
+
+	return
+}
+
+func processStoryContent(sc InputStoryContent) (env storyContentEnvelope, cnt []content, err error) {
+	env.content = sc
+	file := sc.storyContentFile()
+
+	switch {
+	case file.id != "":
+		env.ref = file.id
+
+	case file.url != "":
+		env.ref = file.url
+
+	case file.path != "" && len(file.content) == 0:
+		if file.content, file.path, err = readFile(file); err != nil {
+			return
+		}
+		fallthrough
+
+	case file.path != "" && len(file.content) > 0:
+		cnt = append(cnt, content{file.path, file.path, file.content})
+		env.ref = fmt.Sprintf("attach://%s", file.path)
+	}
+
+	return
+}
+
+// withParam appends an escaped query parameter to a URL that already has a query string.
+func withParam(u, key, val string) string {
+	return u + "&" + key + "=" + url.QueryEscape(val)
 }
 
 func itoa(i int64) string {

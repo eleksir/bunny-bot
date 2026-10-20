@@ -1,87 +1,83 @@
 package main
 
 import (
-	"bunny-bot/internal/moon"
 	"fmt"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
-	"time"
 
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	"bunny-bot/internal/moon"
+	"bunny-bot/internal/mylog"
 )
 
-// TODO: use https://dev.to/gholami1313/saving-log-messages-to-a-custom-log-file-in-golang-ce5 for
+// main decides the process's fate and nothing else: run the bot, and decide the
+// exit status from how it ended. An error leaves 1; a signal-driven stop leaves
+// 128 + the signal's number (130 for Ctrl+C on this platform) so a supervisor can
+// tell a signal stop from a clean one, which is what D33 fixed; a stop nobody
+// signalled leaves 0.
 //
-//	chat messages.
+// os.Exit is called here and nowhere else, deliberately. A worker goroutine cannot
+// set an exit status without ending the process, which skips every deferred
+// cleanup on the way out — including the one that closes the log we would be
+// complaining about.
 func main() {
-	var err error
+	if err := run(); err != nil {
+		// The logs may already be closed, so stderr is the one channel left that
+		// is certain to be attached.
+		fmt.Fprintf(os.Stderr, "bunny-bot: %v\n", err)
 
+		os.Exit(1)
+	}
+
+	os.Exit(moon.ExitCode())
+}
+
+// run is the whole lifecycle, so that every deferred cleanup belongs to a function
+// that returns instead of one that exits.
+//
+// Its single defer covers the bot's entire life: once the log is open, nothing
+// after that point returns early.
+func run() error {
 	// Main config.
 	executablePath, err := os.Executable()
-
 	if err != nil {
-		panic(fmt.Sprintf("Unable to get current executable path: %s", err))
+		return fmt.Errorf("unable to get current executable path: %w", err)
 	}
 
 	configJSONPath := fmt.Sprintf("%s/data/config.json", filepath.Dir(executablePath))
 
 	moon.Cfg, err = moon.ParseConfig(configJSONPath)
-
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("unable to read the config: %w", err)
 	}
 
-	// Config for Zap logger facility.
-	var logCfg = zap.NewDevelopmentConfig()
-
-	// Define loglevel.
-	var l zapcore.Level
-
-	if err := l.UnmarshalText([]byte(moon.Cfg.LogLevel)); err != nil {
-		panic("Unknown LogLevel")
+	// Open the log. ParseConfig has already coerced an unknown level to "info",
+	// so an error here means the file itself could not be opened — which is
+	// worth surfacing loudly rather than continuing with no record of anything.
+	if err := mylog.Init(moon.Cfg.LogLevel, moon.Cfg.LogFile); err != nil {
+		return fmt.Errorf("unable to open the log: %w", err)
 	}
 
-	logCfg.Level = zap.NewAtomicLevelAt(l)
+	defer func() { _ = mylog.Close() }()
 
-	// Define output file if set in config.
-	if moon.Cfg.LogFile != "" {
-		logCfg.OutputPaths[0] = moon.Cfg.LogFile
-	}
-
-	// We do not want to see caller in logs.
-	logCfg.DisableCaller = true
-
-	// We want human-readable timestamp in logs.
-	logCfg.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout(time.DateTime)
-
-	logger := zap.Must(logCfg.Build())
-	moon.Log = logger.Sugar()
-
-	mystdlogger := zap.RedirectStdLog(logger)
-	defer mystdlogger()
-
-	moon.Log.Info("Config read looks good")
+	mylog.Info("Config read looks good")
 
 	// Самое время поставить траппер сигналов.
-	signal.Notify(moon.SigChan,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
+	moon.InstallSignalHandler()
 
-	go moon.SigHandler()
+	mylog.Info("Signal handler installed")
 
-	moon.Log.Info("Singnal handler installed")
+	mylog.Info("Starting main loop")
 
-	moon.Log.Info("Starting RunAndBan() periodic task")
-
-	go moon.RunAndBan()
-
-	moon.Log.Info("Starting main loop")
-
+	// Telegram assigns moon.Tg on this goroutine; the sweeper reads it, so the
+	// client must be constructed before any goroutine that can call the API.
 	moon.Telegram(moon.Cfg)
+
+	// The update listener has returned, but that is not the same as a finished
+	// shutdown: a signal handler may be mid-teardown right now. Shutdown blocks
+	// until the ordered sequence has completed, whichever goroutine started it,
+	// so the process cannot exit with the log half-closed — and its error is what
+	// decides the exit status.
+	return moon.Shutdown()
 }
 
 /* vim: set ft=go noet ai ts=4 sw=4 sts=4: */

@@ -1,9 +1,6 @@
 {
-	"name": "Bunny",
 	"token": "get_it_from_botfather",
 	"loglevel": "debug",
-        "logfile": "bunny-bot.log",
-        "logchats": false,
-	"csign": ".",
-	"datadir": "data"
+	"logfile": "/var/log/bunny-bot/bunny-bot.log",
+	"chat_logs": "chat_logs"
 }

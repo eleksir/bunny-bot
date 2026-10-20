@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
+
+	"bunny-bot/internal/elog"
+	"bunny-bot/internal/mylog"
 
 	"github.com/hjson/hjson-go"
-	"go.uber.org/zap/zapcore"
 )
 
 // parseConfig разбирает и валидирует даденный конфиг.
@@ -66,33 +67,26 @@ func ParseConfig(path string) (MyConfig, error) {
 		return MyConfig{}, fmt.Errorf("token field in config file %s must be set", path) //nolint: err113
 	}
 
-	if _, err := zapcore.ParseLevel(sampleConfig.LogLevel); err != nil {
+	if _, err := mylog.ParseLevel(sampleConfig.LogLevel); err != nil {
 		sampleConfig.LogLevel = "info"
 	}
 
+	// Chat logs are optional, but a configured path that does not exist is a
+	// typo and must stop startup rather than silently disable logging.
+	//
+	// A relative chat_logs is resolved against the directory holding the config
+	// file, not the process working directory: a daemon's cwd is wherever its
+	// supervisor happened to start it, so a relative path there would move the
+	// log directory on every restart under a different supervisor.
+	if sampleConfig.ChatLogs != "" && !filepath.IsAbs(sampleConfig.ChatLogs) {
+		sampleConfig.ChatLogs = filepath.Join(filepath.Dir(path), sampleConfig.ChatLogs)
+	}
+
+	if err := elog.Init(sampleConfig.ChatLogs); err != nil {
+		return MyConfig{}, fmt.Errorf("chat_logs field in config file %s is invalid: %w", path, err)
+	}
+
 	// sampleConfig.Log = "" if not set
-
-	if sampleConfig.CSign == "" {
-		err := fmt.Errorf("csign field in config file %s must be set", path) //nolint: err113
-
-		return MyConfig{}, err
-	}
-
-	if sampleConfig.DataDir == "" {
-		return MyConfig{}, fmt.Errorf("data_dir field in config file %s must be set", path) //nolint: err113
-	}
-
-	if strings.Split(sampleConfig.DataDir, "")[0] != "/" {
-		executablePath, err := os.Executable()
-
-		if err != nil {
-			err := fmt.Errorf("unable to get current executable path: %w", err)
-
-			return MyConfig{}, err
-		}
-
-		sampleConfig.DataDir = fmt.Sprintf("%s/%s", filepath.Dir(executablePath), sampleConfig.DataDir)
-	}
 
 	return sampleConfig, err
 }

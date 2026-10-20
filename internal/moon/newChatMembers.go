@@ -1,31 +1,61 @@
 package moon
 
 import (
-	"fmt"
-	"slices"
 	"time"
+
+	"bunny-bot/internal/elog"
+	"bunny-bot/internal/mylog"
 
 	"github.com/NicoNex/echotron/v3"
 )
 
 // newChatMembers parses NewChatMember event.
 func newChatMembers(msg *echotron.Update) {
-	// If there is no such chatid, means that no such cache too.
-	Log.Debugf(
-		"Add %s %s (%d) to list of known chats",
-		msg.Message.Chat.Type,
-		msg.Message.Chat.Title,
-		msg.Message.Chat.ID,
-	)
+	// Telegram normally reports one newcomer per service message. If that ever
+	// stops being true, the sweeper would only judge the first member, so make it
+	// visible in the logs rather than silently ignoring the rest.
+	if len(msg.Message.NewChatMembers) > 1 {
+		mylog.Warnf(
+			"MULTI-MEMBER JOIN in chat %d: %d newcomers in one event, only the first is moderated",
+			msg.Message.Chat.ID,
+			len(msg.Message.NewChatMembers),
+		)
+	}
 
-	ChatList = append(ChatList, msg.Message.Chat.ID)
-	slices.Sort(ChatList)
-	ChatList = slices.Compact(ChatList)
-
-	AddChat(&msg.Message.Chat)
+	// Keep only the newcomers we can actually address. In production the ingress has
+	// already refused such an update; this filter is the nil-safety that keeps a
+	// direct caller from recording somebody we cannot name.
+	newcomers := make([]*echotron.User, 0, len(msg.Message.NewChatMembers))
 
 	for _, user := range msg.Message.NewChatMembers {
-		Log.Infof(
+		if !usableUser(user) {
+			continue
+		}
+
+		newcomers = append(newcomers, user)
+	}
+
+	if len(newcomers) == 0 {
+		return
+	}
+
+	// Remember the join so the greeting sweeper can tell later whether this
+	// newcomer answered, and so a ban can retract the greeting we sent.
+	//
+	// The join is recorded before the greeting exists, so the greeting id starts
+	// at zero and is filled in once the send returns. A join whose greeting was
+	// never delivered therefore carries zero, which is exactly the marker
+	// retractGreetings skips.
+	joinMicros := time.Now().UnixMicro()
+	PendingGreetings.Set(joinMicros, pendingGreeting{join: msg.Message}, greetCacheTTL)
+
+	// Record the join in the chat log before anything else, so the arrival is on
+	// record even if the greeting later fails. elog writes one line per newcomer
+	// itself, so this is called once for the whole event rather than per user.
+	elog.LogMessage(msg.Message)
+
+	for _, user := range newcomers {
+		mylog.Infof(
 			"User %s %s (username = %s, id = %d) joined %s %s (%d)",
 			user.FirstName,
 			user.LastName,
@@ -36,60 +66,23 @@ func newChatMembers(msg *echotron.Update) {
 			msg.Message.Chat.ID,
 		)
 
-		AddUser(user)
+		// Greet the newcomer, so that a spammer who never answers becomes
+		// detectable. If the greeting could not be delivered the newcomer never
+		// saw the question, so they must not be judged on their silence.
+		greetingID, delivered := sendGreeting(msg.Message.Chat.ID, user)
+		if !delivered {
+			PendingGreetings.Delete(joinMicros)
 
-		casBanned, err := CasCheckID(user.ID)
-
-		if err != nil {
-			Log.Error(err)
+			return
 		}
 
-		// Ban user if cas report it as banned.
-		if casBanned {
-			Log.Infof(
-				"Ban user %s %s (username = %s, id = %d) in %s %s (%d) by CAS blacklist",
-				user.FirstName,
-				user.LastName,
-				user.Username,
-				user.ID,
-				msg.Message.Chat.Type,
-				msg.Message.Chat.Title,
-				msg.Message.Chat.ID,
-			)
-
-			squash(
-				msg.Message.Chat.ID,
-				user.ID,
-			)
-		}
-
-		// Do not return on prev. step.
-
-		Log.Infof(
-			"Skip banning user %s %s (username = %s, id = %d) in %s %s (%d) because it was not found in CAS blacklist",
-			user.FirstName,
-			user.LastName,
-			user.Username,
-			user.ID,
-			msg.Message.Chat.Type,
-			msg.Message.Chat.Title,
-			msg.Message.Chat.ID,
-		)
-
-		Log.Infof(
-			"Add user %s %s (username = %s, id = %d) in %s %s (%d) to NewMember DB",
-			user.FirstName,
-			user.LastName,
-			user.Username,
-			user.ID,
-			msg.Message.Chat.Type,
-			msg.Message.Chat.Title,
-			msg.Message.Chat.ID,
-		)
-
-		key := fmt.Sprintf("%d+%d", msg.Message.Chat.ID, user.ID)
-		NewMembers.Set(key, time.Now().Unix(), 1*time.Minute)
-		PendingCASMembers.Set(key, time.Now().Unix(), 30*time.Minute)
+		// Re-record the join carrying the greeting's id. A member who joined
+		// twice has one recorded join per greeting, so each id is retracted
+		// separately.
+		PendingGreetings.Set(joinMicros, pendingGreeting{
+			join:       msg.Message,
+			greetingID: greetingID,
+		}, greetCacheTTL)
 	}
 }
 

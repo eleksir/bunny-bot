@@ -528,7 +528,7 @@ type InputInvoiceMessageContent struct {
 	SuggestedTipAmounts       *[]int         `json:"suggested_tip_amounts,omitempty"`
 	PhotoURL                  string         `json:"photo_url,omitempty"`
 	Description               string         `json:"description"`
-	Payload                   string         `json:"string"`
+	Payload                   string         `json:"payload"`
 	ProviderToken             string         `json:"provider_token,omitempty"`
 	Currency                  string         `json:"currency"`
 	Title                     string         `json:"title"`
@@ -549,6 +549,14 @@ type InputInvoiceMessageContent struct {
 
 // ImplementsInputMessageContent is used to implement the InputMessageContent interface.
 func (i InputInvoiceMessageContent) ImplementsInputMessageContent() {}
+
+// InputRichMessageContent represents the content of a rich message to be sent as the result of an inline query.
+type InputRichMessageContent struct {
+	RichMessage InputRichMessage `json:"rich_message"`
+}
+
+// ImplementsInputMessageContent is used to implement the InputMessageContent interface.
+func (i InputRichMessageContent) ImplementsInputMessageContent() {}
 
 // InlineQueryResultsButton represents a button to be shown above inline query results.
 // You MUST use exactly one of the fields.
@@ -587,7 +595,7 @@ func (a API) AnswerInlineQuery(inlineQueryID string, results []InlineQueryResult
 	jsn, _ := json.Marshal(results)
 	vals.Set("inline_query_id", inlineQueryID)
 	vals.Set("results", string(jsn))
-	return res, client.get(a.base, "answerInlineQuery", addValues(vals, opts), &res)
+	return res, a.lclient.get(a.base, "answerInlineQuery", addValues(vals, opts), &res)
 }
 
 // SavePreparedInlineMessage stores a message that can be sent by a user of a Mini App.
@@ -597,5 +605,5 @@ func (a API) SavePreparedInlineMessage(userID int64, result InlineQueryResult, o
 	jsn, _ := json.Marshal(result)
 	vals.Set("user_id", itoa(userID))
 	vals.Set("result", string(jsn))
-	return res, client.get(a.base, "savePreparedInlineMessage", addValues(vals, opts), &res)
+	return res, a.lclient.get(a.base, "savePreparedInlineMessage", addValues(vals, opts), &res)
 }

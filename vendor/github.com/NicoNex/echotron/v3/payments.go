@@ -183,14 +183,23 @@ func (t TransactionPartnerFragment) ImplementsTransactionPartner() {}
 // TransactionPartnerUser describes a transaction with a user.
 // Type MUST be "user".
 type TransactionPartnerUser struct {
-	PaidMedia          *[]PaidMedia   `json:"paid_media,omitempty"`
-	Type               string         `json:"type"`
-	InvoicePayload     string         `json:"invoice_payload,omitempty"`
-	PaidMediaPayload   string         `json:"paid_media_payload,omitempty"`
-	User               User           `json:"user"`
-	Affiliate          *AffiliateInfo `json:"affiliate,omitempty"`
-	Gift               Gift           `json:"gift,omitempty"`
-	SubscriptionPeriod int            `json:"subscription_period,omitempty"`
+	Gift                        Gift           `json:"gift,omitempty"`
+	PaidMedia                   *[]PaidMedia   `json:"paid_media,omitempty"`
+	Affiliate                   *AffiliateInfo `json:"affiliate,omitempty"`
+	Type                        string         `json:"type"`
+	InvoicePayload              string         `json:"invoice_payload,omitempty"`
+	PaidMediaPayload            string         `json:"paid_media_payload,omitempty"`
+	TransactionType             string         `json:"transaction_type"`
+	User                        User           `json:"user"`
+	SubscriptionPeriod          int            `json:"subscription_period,omitempty"`
+	PremiumSubscriptionDuration int            `json:"premium_subscription_duration,omitempty"`
+}
+
+// TransactionPartnerChat describes a transaction with a chat.
+type TransactionPartnerChat struct {
+	Gift Gift   `json:"gift,omitempty"`
+	Type string `json:"type"`
+	Chat Chat   `json:"chat"`
 }
 
 // ImplementsTransactionPartner is used to implement the TransactionPartner interface.
@@ -236,7 +245,7 @@ type StarTransaction struct {
 
 // StarTransactions contains a list of Telegram Star transactions.
 type StarTransactions struct {
-	Transaction []StarTransaction `json:"transaction"`
+	Transactions []StarTransaction `json:"transactions"`
 }
 
 // StarTransactionsOptions contains the optional parameters used by the GetStarTransactions method.
@@ -260,7 +269,7 @@ func (a API) SendInvoice(chatID int64, title, description, payload, currency str
 	vals.Set("payload", payload)
 	vals.Set("currency", currency)
 	vals.Set("prices", string(p))
-	return res, client.get(a.base, "sendInvoice", addValues(vals, opts), &res)
+	return res, a.lclient.get(a.base, "sendInvoice", addValues(vals, opts), &res)
 }
 
 // CreateInvoiceLink creates a link for an invoice.
@@ -277,7 +286,7 @@ func (a API) CreateInvoiceLink(title, description, payload, currency string, pri
 	vals.Set("payload", payload)
 	vals.Set("currency", currency)
 	vals.Set("prices", string(p))
-	return res, client.get(a.base, "createInvoiceLink", addValues(vals, opts), &res)
+	return res, a.lclient.get(a.base, "createInvoiceLink", addValues(vals, opts), &res)
 }
 
 // AnswerShippingQuery is used to reply to shipping queries.
@@ -288,7 +297,7 @@ func (a API) AnswerShippingQuery(shippingQueryID string, ok bool, opts *Shipping
 
 	vals.Set("shipping_query_id", shippingQueryID)
 	vals.Set("ok", btoa(ok))
-	return res, client.get(a.base, "answerShippingQuery", addValues(vals, opts), &res)
+	return res, a.lclient.get(a.base, "answerShippingQuery", addValues(vals, opts), &res)
 }
 
 // AnswerPreCheckoutQuery is used to respond to such pre-checkout queries.
@@ -300,12 +309,12 @@ func (a API) AnswerPreCheckoutQuery(preCheckoutQueryID string, ok bool, opts *Pr
 
 	vals.Set("pre_checkout_query_id", preCheckoutQueryID)
 	vals.Set("ok", btoa(ok))
-	return res, client.get(a.base, "answerPreCheckoutQuery", addValues(vals, opts), &res)
+	return res, a.lclient.get(a.base, "answerPreCheckoutQuery", addValues(vals, opts), &res)
 }
 
 // GetStarTransactions returns the bot's Telegram Star transactions in chronological order.
 func (a API) GetStarTransactions(opts *StarTransactionsOptions) (res APIResponseStarTransactions, err error) {
-	return res, client.get(a.base, "getStarTransactions", urlValues(opts), &res)
+	return res, a.lclient.get(a.base, "getStarTransactions", urlValues(opts), &res)
 }
 
 // RefundStarPayment refunds a successful payment in Telegram Stars.
@@ -314,7 +323,7 @@ func (a API) RefundStarPayment(userID int64, telegramPaymentChargeID string) (re
 
 	vals.Set("user_id", itoa(userID))
 	vals.Set("telegram_payment_charge_id", telegramPaymentChargeID)
-	return res, client.get(a.base, "refundStarPayment", vals, &res)
+	return res, a.lclient.get(a.base, "refundStarPayment", vals, &res)
 }
 
 // EditUserStarSubscription allows the bot to cancel or re-enable extension of a subscription paid in Telegram Stars.
@@ -324,5 +333,5 @@ func (a API) EditUserStarSubscription(userID int64, telegramPaymentChargeID stri
 	vals.Set("user_id", itoa(userID))
 	vals.Set("telegram_payment_charge_id", telegramPaymentChargeID)
 	vals.Set("is_canceled", btoa(isCanceled))
-	return res, client.get(a.base, "editUserStarSubscription", vals, &res)
+	return res, a.lclient.get(a.base, "editUserStarSubscription", vals, &res)
 }

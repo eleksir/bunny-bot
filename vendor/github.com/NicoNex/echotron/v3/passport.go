@@ -7,8 +7,8 @@ import (
 
 // PassportData contains information about Telegram Passport data shared with the bot by the user.
 type PassportData struct {
-	Credentials EncryptedCredentials       `json:"encrypted_credentials"`
-	Data        []EncryptedPassportElement `json:"encrypted_passport_element"`
+	Credentials EncryptedCredentials       `json:"credentials"`
+	Data        []EncryptedPassportElement `json:"data"`
 }
 
 // PassportFile represents a file uploaded to Telegram Passport.
@@ -224,5 +224,5 @@ func (a API) SetPassportDataErrors(userID int64, errors []PassportElementError) 
 
 	vals.Set("user_id", itoa(userID))
 	vals.Set("errors", string(errorsArr))
-	return res, client.get(a.base, "setPassportDataErrors", vals, &res)
+	return res, a.lclient.get(a.base, "setPassportDataErrors", vals, &res)
 }

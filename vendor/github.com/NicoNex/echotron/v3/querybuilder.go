@@ -39,8 +39,12 @@ func toString(v reflect.Value) string {
 	case reflect.Bool:
 		return strconv.FormatBool(v.Bool())
 
-	case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array:
-		b, _ := json.Marshal(v.Interface())
+	case reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array, reflect.Pointer:
+		var i any = v.Interface()
+		if m, ok := i.(InputMedia); ok {
+			i, _ = inlineMedia(m) // SendPoll reports the error before the query is built.
+		}
+		b, _ := json.Marshal(i)
 		return string(b)
 
 	default:
